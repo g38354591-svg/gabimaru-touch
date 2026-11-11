@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>شطرنج غابيمارو</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body {
+  font-family: 'Cairo','Segoe UI',system-ui,sans-serif;
+  background: radial-gradient(ellipse at top,#2a1140 0%,#0f0518 60%,#050108 100%);
+  color:#fff; min-height:100vh; padding:20px;
+  display:flex; flex-direction:column; align-items:center;
+}
+.header { text-align:center; margin:20px 0 30px; }
+.title {
+  font-size:26px; font-weight:800;
+  background: linear-gradient(135deg,#ff4b8b,#b940ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; letter-spacing:2px;
+}
+.subtitle { font-size:13px; color:#b88dff; margin-top:8px; letter-spacing:1px; }
+.cards { width:100%; max-width:440px; display:flex; flex-direction:column; gap:16px; }
+.card {
+  display:flex; align-items:center; gap:16px;
+  padding:22px 20px;
+  background: linear-gradient(135deg,rgba(50,20,80,.7),rgba(30,10,50,.9));
+  border:1.5px solid rgba(160,80,240,.4);
+  border-radius:20px; text-decoration:none; color:inherit;
+  transition: all .25s ease; position:relative; overflow:hidden;
+}
+.card::before {
+  content:''; position:absolute; right:-40px; top:-40px;
+  width:120px; height:120px;
+  background: radial-gradient(circle,rgba(200,80,255,.25),transparent 70%);
+  pointer-events:none;
+}
+.card:active {
+  transform:scale(.97);
+  background: linear-gradient(135deg,rgba(70,30,110,.8),rgba(40,15,70,1));
+}
+.card.disabled { opacity:.55; pointer-events:none; }
+.icon {
+  width:60px; height:60px; display:flex; align-items:center; justify-content:center;
+  font-size:32px; border-radius:16px;
+  background: linear-gradient(135deg,#ff4b8b22,#b940ff22);
+  border:1px solid rgba(200,100,255,.3); flex-shrink:0;
+}
+.info { flex:1; }
+.name { font-size:18px; font-weight:700; margin-bottom:4px; }
+.desc { font-size:12px; color:#b8a0d8; line-height:1.5; }
+.arrow { color:#ff4b8b; font-size:20px; }
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:8px;
+  font-size:10px; background:#7c4dff; color:#fff;
+  font-weight:600; margin-right:6px;
+}
+.footer {
+  margin-top:40px; font-size:11px; color:#6a4d8a;
+  letter-spacing:2px; text-align:center;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">♟️ شطرنج غابيمارو</div>
+  <div class="subtitle">اختر وضع اللعب</div>
+</div>
+<div class="cards">
+  <a class="card" href="/game/chess">
+    <div class="icon">👥</div>
+    <div class="info">
+      <div class="name">ضد نفسك</div>
+      <div class="desc">لاعبان على نفس الجهاز</div>
+    </div>
+    <div class="arrow">‹</div>
+  </a>
+  <a class="card disabled" href="#">
+    <div class="icon">🤖</div>
+    <div class="info">
+      <div class="name">ضد الذكاء الاصطناعي <span class="badge">قريباً</span></div>
+      <div class="desc">تحدَّ محرك شطرنج ذكي</div>
+    </div>
+    <div class="arrow">‹</div>
+  </a>
+  <a class="card disabled" href="#">
+    <div class="icon">📨</div>
+    <div class="info">
+      <div class="name">دعوة لاعب <span class="badge">قريباً</span></div>
+      <div class="desc">تحدَّ صديقاً من القروب عبر كود</div>
+    </div>
+    <div class="arrow">‹</div>
+  </a>
+</div>
+<div class="footer">GABIMARU · HELL MATRIX</div>
+</body>
+</html>

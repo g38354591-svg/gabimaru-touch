@@ -515,7 +515,7 @@ canvas.gabimaru-three {
 <script type="module">
 (async () => {
   try {
-const THREE = await import('/assets/three.module.js?v=' + Date.now());
+const THREE = await import('https://unpkg.com/three@0.160.0/build/three.module.js');
 
     const canvas = document.createElement('canvas');
     canvas.id = 'gabimaru-3d-world';
@@ -794,7 +794,7 @@ touch-action:none;
 
 const AI_MODE = ${aiMode ? 'true' : 'false'};
 const AI_LEVEL = ${aiLevel};
-const THREE = await import('/assets/three.module.js?v=' + Date.now());
+const THREE = await import('https://unpkg.com/three@0.160.0/build/three.module.js');
 
 const root = document.getElementById('chess3d');
 const status = document.getElementById('status');

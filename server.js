@@ -1653,7 +1653,28 @@ const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
       return send(res,200,{ok:true,state:chessState(game)});
     }
 
-    return send(res,404,{ok:false,error:'NOT_FOUND'});
+// --- STATIC FILES SERVING ---
+if (req.method === 'GET') {
+  let filePath = url.pathname;
+  if (filePath === '/') filePath = '/chess-menu.html';
+  
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml'
+  };
+  const fullPath = path.join(__dirname, 'public', filePath);
+  if (!filePath.includes('..') && fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+    return fs.createReadStream(fullPath).pipe(res);
+  }
+}
+// ----------------------------    
+return send(res,404,{ok:false,error:'NOT_FOUND'});
   } catch (error) {
     console.error('❌ TOUCH SERVER ERROR:', error);
     return send(res,500,{ok:false,error:error.message || String(error)});

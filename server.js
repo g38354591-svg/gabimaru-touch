@@ -1593,7 +1593,7 @@ const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
       return fs.createReadStream(corePath).pipe(res);
     }
     if (req.method === 'GET' && url.pathname === '/assets/three.module.js') {
-      const asset = path.join(__dirname, '..', 'node_modules', 'three', 'build', 'three.module.js');
+      const asset = path.join(__dirname, 'public', 'assets', 'three.module.js');
       if (!fs.existsSync(asset)) {
         return send(res, 404, {ok:false,error:'Three.js file not found'});
       }

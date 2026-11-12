@@ -183,15 +183,20 @@
             legalMoves = state.legal || [];
             isAiTurn = (state.turn === 'b');
             
-            // --- كود اكتشاف التهديدات ---
+            // --- كود اكتشاف التهديدات (تصحيح) ---
             threatenedSquares = [];
             try {
-                const tempChess = new Chess(state.fen);
-                // نجيب كل حركات الخصم (لو دورنا، نشوف حركات البوت)
+                let fen = state.fen;
+                let parts = fen.split(' ');
+                // نقلب الدور عشان نشوف تهديدات الخصم
+                parts[1] = (parts[1] === 'w') ? 'b' : 'w';
+                let flippedFen = parts.join(' ');
+                
+                const tempChess = new Chess(flippedFen);
                 const opponentMoves = tempChess.moves({ verbose: true });
                 for (const move of opponentMoves) {
                     if (move.captured) {
-                        threatenedSquares.push(move.to); // المربع اللي ممكن يتأكل
+                        threatenedSquares.push(move.to); 
                     }
                 }
             } catch (e) { console.log('Threat detection error', e); }

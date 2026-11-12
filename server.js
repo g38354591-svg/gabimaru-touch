@@ -15,6 +15,10 @@ const HOST = '0.0.0.0';
 // ═══ AI ENGINE (minimax + alpha-beta) ═══
 function aiBestMove(chessInstance, level = 3) {
     const PIECE_VALUES = { p:100, n:320, b:330, r:500, q:900, k:20000 };
+    const startTime = Date.now();
+    const TIME_LIMIT = 2500; // 2.5 ثانية كحد أقصى للتفكير
+
+    // التقييم من منظور البوت (الأسود). الموجب يعني البوت كسبان.
     function evaluate(chess) {
         if (chess.isCheckmate()) return chess.turn() === 'w' ? 99999 : -99999;
         if (chess.isDraw()) return 0;
@@ -25,17 +29,20 @@ function aiBestMove(chessInstance, level = 3) {
                 const sq = board[r][c];
                 if (!sq) continue;
                 const val = PIECE_VALUES[sq.type] || 0;
-                score += sq.color === 'w' ? val : -val;
+                score += sq.color === 'b' ? val : -val;
             }
         }
         return score;
     }
+
     function minimax(chess, d, alpha, beta, isMax) {
+        if (Date.now() - startTime > TIME_LIMIT) return evaluate(chess);
         if (d === 0 || chess.isGameOver()) return evaluate(chess);
+        
         const moves = chess.moves({ verbose: true });
-        // ترتيب الحركات: الأكل أولاً لتسريع التقليم
-        moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
-        if (isMax) {
+        moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0)); // الأكل أولاً
+
+        if (isMax) { // دور البوت (يزيد النتيجة)
             let best = -Infinity;
             for (const m of moves) {
                 chess.move(m);
@@ -45,7 +52,7 @@ function aiBestMove(chessInstance, level = 3) {
                 if (beta <= alpha) break;
             }
             return best;
-        } else {
+        } else { // دور اللاعب (يقلل نتيجة البوت)
             let best = Infinity;
             for (const m of moves) {
                 chess.move(m);
@@ -57,22 +64,29 @@ function aiBestMove(chessInstance, level = 3) {
             return best;
         }
     }
+
     const legalMoves = chessInstance.moves({ verbose: true });
     if (!legalMoves.length) return null;
-    
-    if (level === 1 && Math.random() < 0.65) {
+
+    if (level === 1 && Math.random() < 0.4) {
         return legalMoves[Math.floor(Math.random() * legalMoves.length)];
     }
-    
-    const depth = level === 1 ? 2 : level === 2 ? 2 : level === 3 ? 3 : 3;
-    
+
+    // العمق: المستوى 3 و 4 هيبقى عمق 3 (أذكى بدون ما يعلق السيرفر)
+    const depth = level === 1 ? 1 : level === 2 ? 2 : 3;
+
     let bestMove = legalMoves[0];
     let bestScore = -Infinity;
-    for (const m of legalMoves) {
-        chessInstance.move(m);
-        const score = minimax(chessInstance, depth-1, -Infinity, Infinity, false);
-        chessInstance.undo();
-        if (score > bestScore) { bestScore = score; bestMove = m; }
+
+    try {
+        for (const m of legalMoves) {
+            chessInstance.move(m);
+            const score = minimax(chessInstance, depth-1, -Infinity, Infinity, false);
+            chessInstance.undo();
+            if (score > bestScore) { bestScore = score; bestMove = m; }
+        }
+    } catch (e) {
+        return legalMoves[Math.floor(Math.random() * legalMoves.length)];
     }
     return bestMove;
 }

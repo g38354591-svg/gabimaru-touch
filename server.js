@@ -33,6 +33,8 @@ function aiBestMove(chessInstance, level = 3) {
     function minimax(chess, d, alpha, beta, isMax) {
         if (d === 0 || chess.isGameOver()) return evaluate(chess);
         const moves = chess.moves({ verbose: true });
+        // ترتيب الحركات: الأكل أولاً لتسريع التقليم
+        moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
         if (isMax) {
             let best = -Infinity;
             for (const m of moves) {
@@ -62,7 +64,7 @@ function aiBestMove(chessInstance, level = 3) {
         return legalMoves[Math.floor(Math.random() * legalMoves.length)];
     }
     
-    const depth = level === 1 ? 2 : level === 2 ? 3 : level === 3 ? 3 : 4;
+    const depth = level === 1 ? 2 : level === 2 ? 2 : level === 3 ? 3 : 3;
     
     let bestMove = legalMoves[0];
     let bestScore = -Infinity;
@@ -1607,7 +1609,10 @@ const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
 
     if (req.method === 'GET' && url.pathname === '/api/health') return send(res,200,{ok:true,name:'Gabimaru Touch',uptime:process.uptime()});
 
-    if (req.method === 'POST' && url.pathname === '/api/chess/new') {
+    if (req.method === 'GET' && url.pathname === '/health') {
+            return send(res, 200, { status: 'ok' });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/chess/new') {
       const game = {id:crypto.randomBytes(16).toString('hex'),chess:new Chess(),history:[]};
       chessGames.set(game.id,game);
       return send(res,200,{ok:true,state:chessState(game)});

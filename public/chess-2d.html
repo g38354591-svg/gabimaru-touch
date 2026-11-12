@@ -3,125 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>شطرنج جابيمارو VIP</title>
+    <title>Gabimaru Chess 2D</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #07070d; --panel: #11111d; --line: #30233d;
-            --red: #ff2858; --purple: #a855f7; --text: #ffffff; --muted: #aaa9c2;
-            --light-sq: #ebd8b7; --dark-sq: #b58863; --highlight: #a855f7;
+            --bg: #0a0a0f; 
+            --panel: #151522; 
+            --text: #ffffff; 
+            --muted: #8b8b9f;
+            --light-sq: #e8e3d9; 
+            --dark-sq: #4a3e51; 
+            --highlight: #a855f7; 
+            --red: #ff2858;
         }
-        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         body {
-            margin: 0; background: radial-gradient(ellipse at 8% 0%, #54152c55, transparent 38%), radial-gradient(ellipse at 95% 20%, #4b168055, transparent 34%), var(--bg);
-            color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden;
+            margin: 0; background: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100dvh; overflow: hidden; position: relative;
         }
-        .container { width: 100%; max-width: 450px; padding: 15px; }
-        
+
         /* شاشة القائمة */
-        #menu { text-align: center; animation: fadeIn 0.5s; }
-        .logo { font-size: 32px; font-weight: 900; margin-bottom: 5px; background: linear-gradient(90deg, #ff2858, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px #a855f755; }
-        .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
+        #menu { text-align: center; width: 90%; max-width: 400px; animation: fadeIn 0.4s; }
+        .logo { font-size: 36px; font-weight: 900; margin-bottom: 5px; background: linear-gradient(90deg, #ff2858, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: var(--muted); font-size: 15px; margin-bottom: 30px; }
         .btn-menu {
             display: flex; align-items: center; justify-content: space-between;
-            width: 100%; margin-bottom: 15px; padding: 18px 20px; border-radius: 15px;
-            background: linear-gradient(120deg, #191522, #101019 75%);
-            border: 1px solid var(--line); color: white; font-size: 18px; font-weight: 700;
-            cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            width: 100%; margin-bottom: 12px; padding: 18px 20px; border-radius: 12px;
+            background: var(--panel); border: 1px solid #2a2a3d; color: white; font-size: 18px; font-weight: 700;
+            cursor: pointer; transition: 0.2s;
         }
-        .btn-menu:active { transform: scale(0.96); border-color: var(--red); }
+        .btn-menu:active { transform: scale(0.97); border-color: var(--highlight); }
         .btn-menu span { font-size: 24px; }
 
         /* شاشة اللعب */
-        #game { display: none; animation: fadeIn 0.5s; }
-        .status-bar {
-            background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-            padding: 12px; text-align: center; margin-bottom: 15px; font-weight: bold;
-            display: flex; justify-content: center; align-items: center; gap: 10px;
+        #game { display: none; width: 100%; height: 100dvh; flex-direction: column; animation: fadeIn 0.4s; }
+        
+        /* الشريط العلوي */
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; background: var(--panel); border-bottom: 2px solid #2a2a3d;
         }
-        .spinner {
-            width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.2);
-            border-top-color: var(--purple); border-radius: 50%; animation: spin 1s linear infinite;
-            display: none;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .player-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .player-info.ai { flex-direction: row-reverse; }
+        .avatar { width: 40px; height: 40px; background: #2a2a3d; border-radius: 8px; display: grid; place-items: center; font-size: 20px; }
+        .player-info.ai .avatar { background: #3a1e3a; color: var(--red); }
+        .vs { font-weight: 900; color: var(--muted); font-size: 14px; }
 
-        .board-wrapper {
-            background: var(--panel); padding: 8px; border-radius: 12px;
-            border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        /* اللوحة */
+        .board-area { flex: 1; display: flex; justify-content: center; align-items: center; padding: 15px; }
+        .board { 
+            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+            width: 100%; max-width: 500px; aspect-ratio: 1; 
+            border: 3px solid var(--highlight); border-radius: 4px;
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.2);
         }
-        .board { display: grid; grid-template-columns: repeat(8, 1fr); border-radius: 8px; overflow: hidden; aspect-ratio: 1; }
         .square {
-            display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;
-            -webkit-tap-highlight-color: transparent;
+            display: flex; justify-content: center; align-items: center; position: relative;
+            width: 100%; height: 100%; cursor: pointer;
         }
         .light { background: var(--light-sq); }
         .dark { background: var(--dark-sq); }
-        .square img { width: 85%; height: 85%; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
+        .square img { width: 90%; height: 90%; object-fit: contain; pointer-events: none; user-select: none; }
         
-        .square.selected { box-shadow: inset 0 0 0 4px var(--purple); }
-        .square.valid-move::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(168, 85, 247, 0.6); border-radius: 50%; box-shadow: 0 0 10px var(--purple); }
-        .square.capture::after { content: ''; position: absolute; inset: 5%; border: 4px solid var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); background: transparent; }
+        .square.selected { box-shadow: inset 0 0 0 4px var(--red); }
+        .square.valid-move::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(168, 85, 247, 0.6); border-radius: 50%; box-shadow: 0 0 10px var(--highlight); }
+        .square.capture::after { content: ''; position: absolute; inset: 5%; border: 4px solid var(--red); border-radius: 50%; background: transparent; }
 
-        .controls { margin-top: 15px; }
-        .btn-reset { width: 100%; padding: 15px; border-radius: 12px; border: none; background: linear-gradient(110deg, #ed174b, #a21caf); color: white; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 5px 15px rgba(237, 23, 75, 0.3); }
-        .btn-reset:active { transform: scale(0.98); }
+        /* شريط التحكم السفلي */
+        .bottom-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; background: var(--panel); border-top: 2px solid #2a2a3d;
+        }
+        .btn-icon {
+            background: #2a2a3d; border: none; border-radius: 8px; color: white; font-size: 20px;
+            width: 45px; height: 45px; display: grid; place-items: center; cursor: pointer;
+        }
+        .btn-icon:active { background: var(--red); }
+        
+        .status-text { font-size: 14px; font-weight: bold; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--highlight); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- القائمة الرئيسية -->
-        <div id="menu">
-            <div class="logo">♟️ شطرنج جابيمارو</div>
-            <div class="subtitle">اختر مستوى الذكاء الاصطناعي</div>
-            
-            <button class="btn-menu" onclick="startGame(1)">
-                <span>🤖</span> سهل (للمبتدئين)
-            </button>
-            <button class="btn-menu" onclick="startGame(2)">
-                <span>⚔️</span> متوسط (تحدي)
-            </button>
-            <button class="btn-menu" onclick="startGame(3)">
-                <span>🔥</span> صعب (احترافي)
-            </button>
-            <button class="btn-menu" onclick="startGame(4)" style="border-color: var(--red);">
-                <span>💀</span> جحيمي (لا ترحم)
-            </button>
+    <!-- القائمة الرئيسية -->
+    <div id="menu">
+        <div class="logo">Gabimaru Chess</div>
+        <div class="subtitle">اختر مستوى الذكاء الاصطناعي</div>
+        <button class="btn-menu" onclick="startGame(1)"><span>🤖</span> سهل</button>
+        <button class="btn-menu" onclick="startGame(2)"><span>⚔️</span> متوسط</button>
+        <button class="btn-menu" onclick="startGame(3)"><span>🔥</span> صعب</button>
+        <button class="btn-menu" onclick="startGame(4)" style="border-color: var(--red);"><span>💀</span> جحيمي</button>
+    </div>
+
+    <!-- واجهة اللعب -->
+    <div id="game">
+        <!-- الشريط العلوي -->
+        <div class="top-bar">
+            <div class="player-info">
+                <div class="avatar">👤</div>
+                <div>أنت</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="player-info ai">
+                <div class="avatar">🤖</div>
+                <div id="aiName">AI</div>
+            </div>
         </div>
 
-        <!-- لوحة اللعب -->
-        <div id="game">
-            <div class="status-bar">
+        <!-- منطقة اللوحة -->
+        <div class="board-area">
+            <div class="board" id="board"></div>
+        </div>
+
+        <!-- الشريط السفلي -->
+        <div class="bottom-bar">
+            <button class="btn-icon" onclick="location.reload()">🏠</button>
+            <div class="status-text">
                 <div class="spinner" id="spinner"></div>
-                <span id="statusText">جاري تحضير اللوحة...</span>
+                <span id="statusText">جاري التحميل...</span>
             </div>
-            <div class="board-wrapper">
-                <div class="board" id="board"></div>
-            </div>
-            <div class="controls">
-                <button class="btn-reset" onclick="location.reload()">🔄 العودة للقائمة</button>
-            </div>
+            <button class="btn-icon" onclick="location.reload()">🔄</button>
         </div>
     </div>
 
     <script>
-        // استخدام صور قطع الشطرنج الاحترافية (SVG)
         const pieceImages = {
-            'wp': 'https://lichess1.org/assets/piece/cburnett/wP.svg',
-            'wn': 'https://lichess1.org/assets/piece/cburnett/wN.svg',
-            'wb': 'https://lichess1.org/assets/piece/cburnett/wB.svg',
-            'wr': 'https://lichess1.org/assets/piece/cburnett/wR.svg',
-            'wq': 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
-            'wk': 'https://lichess1.org/assets/piece/cburnett/wK.svg',
-            'bp': 'https://lichess1.org/assets/piece/cburnett/bP.svg',
-            'bn': 'https://lichess1.org/assets/piece/cburnett/bN.svg',
-            'bb': 'https://lichess1.org/assets/piece/cburnett/bB.svg',
-            'br': 'https://lichess1.org/assets/piece/cburnett/bR.svg',
-            'bq': 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
-            'bk': 'https://lichess1.org/assets/piece/cburnett/bK.svg'
+            'wp': 'https://lichess1.org/assets/piece/cburnett/wP.svg', 'wn': 'https://lichess1.org/assets/piece/cburnett/wN.svg',
+            'wb': 'https://lichess1.org/assets/piece/cburnett/wB.svg', 'wr': 'https://lichess1.org/assets/piece/cburnett/wR.svg',
+            'wq': 'https://lichess1.org/assets/piece/cburnett/wQ.svg', 'wk': 'https://lichess1.org/assets/piece/cburnett/wK.svg',
+            'bp': 'https://lichess1.org/assets/piece/cburnett/bP.svg', 'bn': 'https://lichess1.org/assets/piece/cburnett/bN.svg',
+            'bb': 'https://lichess1.org/assets/piece/cburnett/bB.svg', 'br': 'https://lichess1.org/assets/piece/cburnett/bR.svg',
+            'bq': 'https://lichess1.org/assets/piece/cburnett/bQ.svg', 'bk': 'https://lichess1.org/assets/piece/cburnett/bK.svg'
         };
-        // ملاحظة: الخادم يرجع رموز، سنقوم بتحويلها إلى مفاتيح الصور
         const symbolToKey = {
             '♙':'wp','♘':'wn','♗':'wb','♖':'wr','♕':'wq','♔':'wk',
             '♟':'bp','♞':'bn','♝':'bb','♜':'br','♛':'bq','♚':'bk'
@@ -129,11 +146,13 @@
 
         let gameId = null, currentLevel = 1, selectedSquare = null, currentBoard = [], legalMoves = [], isAiTurn = false;
         const files = ['a','b','c','d','e','f','g','h'], ranks = ['8','7','6','5','4','3','2','1'];
+        const levelNames = {1: 'سهل', 2: 'متوسط', 3: 'صعب', 4: 'جحيمي'};
 
         async function startGame(level) {
             currentLevel = level;
+            document.getElementById('aiName').innerText = 'AI (' + levelNames[level] + ')';
             document.getElementById('menu').style.display = 'none';
-            document.getElementById('game').style.display = 'block';
+            document.getElementById('game').style.display = 'flex';
             setStatus('جاري بدء المباراة...', true);
 
             try {
@@ -142,8 +161,8 @@
                 });
                 const data = await res.json();
                 if(data.ok) { gameId = data.state.id; updateBoard(data.state); }
-                else setStatus('حدث خطأ أثناء بدء اللعبة');
-            } catch (e) { setStatus('تعذر الاتصال بالسيرفر'); }
+                else setStatus('حدث خطأ');
+            } catch (e) { setStatus('تعذر الاتصال'); }
         }
 
         function setStatus(text, loading = false) {
@@ -157,11 +176,11 @@
             isAiTurn = (state.turn === 'b');
             
             if (state.over) setStatus(state.status);
-            else if (isAiTurn) setStatus('🤖 الذكاء الاصطناعي يفكر...', true);
-            else setStatus(state.status);
+            else if (isAiTurn) setStatus('الذكاء الاصطناعي يفكر...', true);
+            else setStatus('دورك للعب', false);
 
             renderBoard();
-            if (isAiTurn && !state.over) setTimeout(makeAiMove, 600);
+            if (isAiTurn && !state.over) setTimeout(makeAiMove, 500);
         }
 
         function renderBoard() {
@@ -172,8 +191,7 @@
                     const sq = document.createElement('div');
                     sq.className = 'square ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
                     const pos = files[c] + ranks[r];
-                    sq.dataset.pos = pos;
-
+                    
                     const piece = currentBoard[r][c];
                     if (piece) {
                         const key = symbolToKey[piece];
@@ -185,12 +203,10 @@
                     }
 
                     if (selectedSquare === pos) sq.classList.add('selected');
-                    
                     if (selectedSquare) {
                         const move = legalMoves.find(m => m.from === selectedSquare && m.to === pos);
                         if (move) sq.classList.add(move.captured ? 'capture' : 'valid-move');
                     }
-
                     sq.onclick = () => handleSquareClick(pos);
                     boardEl.appendChild(sq);
                 }
@@ -213,7 +229,7 @@
 
         async function makeMove(from, to) {
             selectedSquare = null;
-            setStatus('جاري تنفيذ الحركة...', true);
+            setStatus('جاري التنفيذ...', true);
             try {
                 const res = await fetch('/api/chess/move', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, 
@@ -233,8 +249,8 @@
                 });
                 const data = await res.json();
                 if(data.ok) updateBoard(data.state);
-                else setStatus('خطأ في حركة البوت');
-            } catch (e) { setStatus('السيرفر يستغرق وقتاً طويلاً للرد'); }
+                else setStatus('خطأ في البوت');
+            } catch (e) { setStatus('تأخير في السيرفر'); }
         }
     </script>
 </body>

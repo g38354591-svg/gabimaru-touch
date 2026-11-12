@@ -86,7 +86,15 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+        .square.threatened::before { 
+            content: ''; position: absolute; inset: 0; 
+            background: rgba(255, 40, 88, 0.4); 
+            box-shadow: inset 0 0 10px rgba(255, 40, 88, 0.8);
+            pointer-events: none;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 </head>
 <body>
     <!-- القائمة الرئيسية -->
@@ -144,7 +152,7 @@
             '♟':'bp','♞':'bn','♝':'bb','♜':'br','♛':'bq','♚':'bk'
         };
 
-        let gameId = null, currentLevel = 1, selectedSquare = null, currentBoard = [], legalMoves = [], isAiTurn = false;
+        let gameId = null, currentLevel = 1, selectedSquare = null, currentBoard = [], legalMoves = [], isAiTurn = false, threatenedSquares = [];
         const files = ['a','b','c','d','e','f','g','h'], ranks = ['8','7','6','5','4','3','2','1'];
         const levelNames = {1: 'سهل', 2: 'متوسط', 3: 'صعب', 4: 'جحيمي'};
 
@@ -175,6 +183,20 @@
             legalMoves = state.legal || [];
             isAiTurn = (state.turn === 'b');
             
+            // --- كود اكتشاف التهديدات ---
+            threatenedSquares = [];
+            try {
+                const tempChess = new Chess(state.fen);
+                // نجيب كل حركات الخصم (لو دورنا، نشوف حركات البوت)
+                const opponentMoves = tempChess.moves({ verbose: true });
+                for (const move of opponentMoves) {
+                    if (move.captured) {
+                        threatenedSquares.push(move.to); // المربع اللي ممكن يتأكل
+                    }
+                }
+            } catch (e) { console.log('Threat detection error', e); }
+            // -------------------------
+
             if (state.over) setStatus(state.status);
             else if (isAiTurn) setStatus('الذكاء الاصطناعي يفكر...', true);
             else setStatus('دورك للعب', false);
@@ -203,6 +225,7 @@
                     }
 
                     if (selectedSquare === pos) sq.classList.add('selected');
+                    if (threatenedSquares.includes(pos)) sq.classList.add('threatened');
                     if (selectedSquare) {
                         const move = legalMoves.find(m => m.from === selectedSquare && m.to === pos);
                         if (move) sq.classList.add(move.captured ? 'capture' : 'valid-move');

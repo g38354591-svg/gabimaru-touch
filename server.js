@@ -1544,13 +1544,13 @@ const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
             }
         });
         
-      const url = new URL(req.url
+      const url = new URL(req.url, 'http://localhost');
+
         // REWRITE-PLAY-ROUTE
         if (url.pathname === '/play' || url.pathname === '/chess') {
             url.pathname = '/chess-2d.html';
         }
         // END-REWRITE-PLAY-ROUTE
-, 'http://localhost');
 
   try {
     if (req.method === 'GET' && url.pathname === '/assets/gabimaru-hero-banner.png') {

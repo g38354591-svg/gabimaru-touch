@@ -62,7 +62,7 @@ function aiBestMove(chessInstance, level = 3) {
         return legalMoves[Math.floor(Math.random() * legalMoves.length)];
     }
     
-    const depth = level === 1 ? 2 : level === 2 ? 2 : level === 3 ? 3 : 4;
+    const depth = level === 1 ? 1 : level === 2 ? 2 : level === 3 ? 2 : 3;
     
     let bestMove = legalMoves[0];
     let bestScore = -Infinity;

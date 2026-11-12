@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شطرنج جابيمارو 2D</title>
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --light: #ebd8b7; --dark: #b58863; --highlight: #f7c530; }
+        body { margin: 0; background: var(--bg); color: white; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 400px; padding: 15px; box-sizing: border-box; }
+        .status { text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px; color: #58a6ff; }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); border: 4px solid #30363d; border-radius: 8px; overflow: hidden; aspect-ratio: 1; }
+        .square { display: flex; justify-content: center; align-items: center; font-size: 8vw; cursor: pointer; user-select: none; }
+        @media (min-width: 400px) { .square { font-size: 32px; } }
+        .light { background: var(--light); color: #000; }
+        .dark { background: var(--dark); color: #000; }
+        .selected { box-shadow: inset 0 0 0 4px var(--highlight); }
+        .valid-move { position: relative; }
+        .valid-move::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(0,0,0,0.3); border-radius: 50%; }
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 16px; background: #238636; color: white; cursor: pointer; }
+        button:active { background: #2ea043; }
+        .hidden { display: none; }
+        #menu { text-align: center; }
+        .btn-menu { display: block; width: 100%; margin-bottom: 10px; padding: 15px; border-radius: 10px; background: #21262d; color: white; border: 1px solid #30363d; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-menu:active { background: #30363d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- القائمة الرئيسية -->
+        <div id="menu">
+            <h2>♟️ شطرنج جابيمارو 2D</h2>
+            <button class="btn-menu" onclick="startGame(1)">🤖 ضد الذكاء الاصطناعي (سهل)</button>
+            <button class="btn-menu" onclick="startGame(2)">🤖 ضد الذكاء الاصطناعي (متوسط)</button>
+            <button class="btn-menu" onclick="startGame(4)">🔥 ضد الذكاء الاصطناعي (جحيمي)</button>
+        </div>
+
+        <!-- لوحة اللعب -->
+        <div id="game" class="hidden">
+            <div class="status" id="status">جاري التحميل...</div>
+            <div class="board" id="board"></div>
+            <div class="controls">
+                <button onclick="location.reload()">🔄 إعادة</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pieces = { 'w': { 'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙' }, 'b': { 'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟' } };
+        let gameId = null;
+        let currentLevel = 3;
+        let selectedSquare = null;
+        let currentBoard = [];
+        let legalMoves = [];
+        let isAiTurn = false;
+
+        // خريطة المربعات
+        const files = ['a','b','c','d','e','f','g','h'];
+        const ranks = ['8','7','6','5','4','3','2','1'];
+
+        async function startGame(level) {
+            currentLevel = level;
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('status').innerText = 'جاري بدء المباراة...';
+
+            try {
+                const res = await fetch('/api/chess/new', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ level: level })
+                });
+                const data = await res.json();
+                if(data.ok) {
+                    gameId = data.state.id;
+                    updateBoard(data.state);
+                }
+            } catch (e) {
+                document.getElementById('status').innerText = 'خطأ في الاتصال بالسيرفر';
+            }
+        }
+
+        function updateBoard(state) {
+            currentBoard = state.board;
+            legalMoves = state.legal || [];
+            isAiTurn = (state.turn === 'b');
+            
+            let statusText = state.status;
+            if (isAiTurn) statusText = '🤖 الذكاء الاصطناعي يفكر...';
+            document.getElementById('status').innerText = statusText;
+
+            renderBoard();
+
+            // إذا كان دور الذكاء الاصطناعي، نطلب منه حركة
+            if (isAiTurn && !state.over) {
+                setTimeout(makeAiMove, 500);
+            }
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.createElement('div');
+                    const isLight = (r + c) % 2 === 0;
+                    sq.className = 'square ' + (isLight ? 'light' : 'dark');
+                    
+                    const pos = files[c] + ranks[r];
+                    sq.dataset.pos = pos;
+
+                    const piece = currentBoard[r][c];
+                    if (piece) {
+                        // استخراج اللون والنوع من الرمز (مثلاً ♙)
+                        // نحتاج نعرف لون القطعة، لكن الباك اند بيرجع رموز فقط
+                        // سنعتمد على لون الرمز (القطع البيضاء رموزها مفرغة، السوداء ممتلئة)
+                        sq.innerText = piece;
+                    }
+
+                    // التحديد
+                    if (selectedSquare === pos) sq.classList.add('selected');
+                    
+                    // الحركات المتاحة
+                    if (selectedSquare) {
+                        const isValid = legalMoves.some(m => m.from === selectedSquare && m.to === pos);
+                        if (isValid) sq.classList.add('valid-move');
+                    }
+
+                    sq.onclick = () => handleSquareClick(pos);
+                    boardEl.appendChild(sq);
+                }
+            }
+        }
+
+        function handleSquareClick(pos) {
+            if (isAiTurn) return; // لا تلعب في دور البوت
+
+            if (selectedSquare) {
+                // محاولة تحريك
+                const isValid = legalMoves.some(m => m.from === selectedSquare && m.to === pos);
+                if (isValid) {
+                    makeMove(selectedSquare, pos);
+                } else {
+                    // إلغاء التحديد إذا ضغط على مكان غير صالح
+                    selectedSquare = null;
+                    renderBoard();
+                }
+            } else {
+                // تحديد قطعة
+                const pieceMoves = legalMoves.filter(m => m.from === pos);
+                if (pieceMoves.length > 0) {
+                    selectedSquare = pos;
+                    renderBoard();
+                }
+            }
+        }
+
+        async function makeMove(from, to) {
+            selectedSquare = null;
+            document.getElementById('status').innerText = 'جاري تنفيذ الحركة...';
+            
+            try {
+                const res = await fetch('/api/chess/move', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ id: gameId, from: from, to: to, promotion: 'q' })
+                });
+                const data = await res.json();
+                if(data.ok) {
+                    updateBoard(data.state);
+                } else {
+                    alert(data.error);
+                    renderBoard();
+                }
+            } catch (e) {
+                document.getElementById('status').innerText = 'خطأ في الاتصال';
+            }
+        }
+
+        async function makeAiMove() {
+            try {
+                const res = await fetch('/api/chess/ai-move', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ id: gameId, level: currentLevel })
+                });
+                const data = await res.json();
+                if(data.ok) {
+                    updateBoard(data.state);
+                } else {
+                    document.getElementById('status').innerText = 'خطأ في حركة البوت';
+                }
+            } catch (e) {
+                document.getElementById('status').innerText = 'خطأ في الاتصال';
+            }
+        }
+    </script>
+</body>
+</html>

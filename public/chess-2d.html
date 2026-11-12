@@ -3,80 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>شطرنج جابيمارو 2D</title>
+    <title>شطرنج جابيمارو VIP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --light: #ebd8b7; --dark: #b58863; --highlight: #f7c530; }
-        body { margin: 0; background: var(--bg); color: white; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 400px; padding: 15px; box-sizing: border-box; }
-        .status { text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px; color: #58a6ff; }
-        .board { display: grid; grid-template-columns: repeat(8, 1fr); border: 4px solid #30363d; border-radius: 8px; overflow: hidden; aspect-ratio: 1; }
-        .square { display: flex; justify-content: center; align-items: center; font-size: 8vw; cursor: pointer; user-select: none; }
-        @media (min-width: 400px) { .square { font-size: 32px; } }
-        .light { background: var(--light); color: #000; }
-        .dark { background: var(--dark); color: #000; }
-        .selected { box-shadow: inset 0 0 0 4px var(--highlight); }
-        .valid-move { position: relative; }
-        .valid-move::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(0,0,0,0.3); border-radius: 50%; }
-        .controls { display: flex; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 16px; background: #238636; color: white; cursor: pointer; }
-        button:active { background: #2ea043; }
-        .hidden { display: none; }
-        #menu { text-align: center; }
-        .btn-menu { display: block; width: 100%; margin-bottom: 10px; padding: 15px; border-radius: 10px; background: #21262d; color: white; border: 1px solid #30363d; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .btn-menu:active { background: #30363d; }
+        :root {
+            --bg: #07070d; --panel: #11111d; --line: #30233d;
+            --red: #ff2858; --purple: #a855f7; --text: #ffffff; --muted: #aaa9c2;
+            --light-sq: #ebd8b7; --dark-sq: #b58863; --highlight: #a855f7;
+        }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body {
+            margin: 0; background: radial-gradient(ellipse at 8% 0%, #54152c55, transparent 38%), radial-gradient(ellipse at 95% 20%, #4b168055, transparent 34%), var(--bg);
+            color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden;
+        }
+        .container { width: 100%; max-width: 450px; padding: 15px; }
+        
+        /* شاشة القائمة */
+        #menu { text-align: center; animation: fadeIn 0.5s; }
+        .logo { font-size: 32px; font-weight: 900; margin-bottom: 5px; background: linear-gradient(90deg, #ff2858, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px #a855f755; }
+        .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
+        .btn-menu {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; margin-bottom: 15px; padding: 18px 20px; border-radius: 15px;
+            background: linear-gradient(120deg, #191522, #101019 75%);
+            border: 1px solid var(--line); color: white; font-size: 18px; font-weight: 700;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .btn-menu:active { transform: scale(0.96); border-color: var(--red); }
+        .btn-menu span { font-size: 24px; }
+
+        /* شاشة اللعب */
+        #game { display: none; animation: fadeIn 0.5s; }
+        .status-bar {
+            background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+            padding: 12px; text-align: center; margin-bottom: 15px; font-weight: bold;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .spinner {
+            width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: var(--purple); border-radius: 50%; animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .board-wrapper {
+            background: var(--panel); padding: 8px; border-radius: 12px;
+            border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); border-radius: 8px; overflow: hidden; aspect-ratio: 1; }
+        .square {
+            display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .light { background: var(--light-sq); }
+        .dark { background: var(--dark-sq); }
+        .square img { width: 85%; height: 85%; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
+        
+        .square.selected { box-shadow: inset 0 0 0 4px var(--purple); }
+        .square.valid-move::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(168, 85, 247, 0.6); border-radius: 50%; box-shadow: 0 0 10px var(--purple); }
+        .square.capture::after { content: ''; position: absolute; inset: 5%; border: 4px solid var(--red); border-radius: 50%; box-shadow: 0 0 10px var(--red); background: transparent; }
+
+        .controls { margin-top: 15px; }
+        .btn-reset { width: 100%; padding: 15px; border-radius: 12px; border: none; background: linear-gradient(110deg, #ed174b, #a21caf); color: white; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 5px 15px rgba(237, 23, 75, 0.3); }
+        .btn-reset:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- القائمة الرئيسية -->
         <div id="menu">
-            <h2>♟️ شطرنج جابيمارو 2D</h2>
-            <button class="btn-menu" onclick="startGame(1)">🤖 ضد الذكاء الاصطناعي (سهل)</button>
-            <button class="btn-menu" onclick="startGame(2)">🤖 ضد الذكاء الاصطناعي (متوسط)</button>
-            <button class="btn-menu" onclick="startGame(4)">🔥 ضد الذكاء الاصطناعي (جحيمي)</button>
+            <div class="logo">♟️ شطرنج جابيمارو</div>
+            <div class="subtitle">اختر مستوى الذكاء الاصطناعي</div>
+            
+            <button class="btn-menu" onclick="startGame(1)">
+                <span>🤖</span> سهل (للمبتدئين)
+            </button>
+            <button class="btn-menu" onclick="startGame(2)">
+                <span>⚔️</span> متوسط (تحدي)
+            </button>
+            <button class="btn-menu" onclick="startGame(3)">
+                <span>🔥</span> صعب (احترافي)
+            </button>
+            <button class="btn-menu" onclick="startGame(4)" style="border-color: var(--red);">
+                <span>💀</span> جحيمي (لا ترحم)
+            </button>
         </div>
 
         <!-- لوحة اللعب -->
-        <div id="game" class="hidden">
-            <div class="status" id="status">جاري التحميل...</div>
-            <div class="board" id="board"></div>
+        <div id="game">
+            <div class="status-bar">
+                <div class="spinner" id="spinner"></div>
+                <span id="statusText">جاري تحضير اللوحة...</span>
+            </div>
+            <div class="board-wrapper">
+                <div class="board" id="board"></div>
+            </div>
             <div class="controls">
-                <button onclick="location.reload()">🔄 إعادة</button>
+                <button class="btn-reset" onclick="location.reload()">🔄 العودة للقائمة</button>
             </div>
         </div>
     </div>
 
     <script>
-        const pieces = { 'w': { 'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙' }, 'b': { 'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟' } };
-        let gameId = null;
-        let currentLevel = 3;
-        let selectedSquare = null;
-        let currentBoard = [];
-        let legalMoves = [];
-        let isAiTurn = false;
+        // استخدام صور قطع الشطرنج الاحترافية (SVG)
+        const pieceImages = {
+            'wp': 'https://lichess1.org/assets/piece/cburnett/wP.svg',
+            'wn': 'https://lichess1.org/assets/piece/cburnett/wN.svg',
+            'wb': 'https://lichess1.org/assets/piece/cburnett/wB.svg',
+            'wr': 'https://lichess1.org/assets/piece/cburnett/wR.svg',
+            'wq': 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+            'wk': 'https://lichess1.org/assets/piece/cburnett/wK.svg',
+            'bp': 'https://lichess1.org/assets/piece/cburnett/bP.svg',
+            'bn': 'https://lichess1.org/assets/piece/cburnett/bN.svg',
+            'bb': 'https://lichess1.org/assets/piece/cburnett/bB.svg',
+            'br': 'https://lichess1.org/assets/piece/cburnett/bR.svg',
+            'bq': 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+            'bk': 'https://lichess1.org/assets/piece/cburnett/bK.svg'
+        };
+        // ملاحظة: الخادم يرجع رموز، سنقوم بتحويلها إلى مفاتيح الصور
+        const symbolToKey = {
+            '♙':'wp','♘':'wn','♗':'wb','♖':'wr','♕':'wq','♔':'wk',
+            '♟':'bp','♞':'bn','♝':'bb','♜':'br','♛':'bq','♚':'bk'
+        };
 
-        // خريطة المربعات
-        const files = ['a','b','c','d','e','f','g','h'];
-        const ranks = ['8','7','6','5','4','3','2','1'];
+        let gameId = null, currentLevel = 1, selectedSquare = null, currentBoard = [], legalMoves = [], isAiTurn = false;
+        const files = ['a','b','c','d','e','f','g','h'], ranks = ['8','7','6','5','4','3','2','1'];
 
         async function startGame(level) {
             currentLevel = level;
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('game').classList.remove('hidden');
-            document.getElementById('status').innerText = 'جاري بدء المباراة...';
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            setStatus('جاري بدء المباراة...', true);
 
             try {
                 const res = await fetch('/api/chess/new', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ level: level })
                 });
                 const data = await res.json();
-                if(data.ok) {
-                    gameId = data.state.id;
-                    updateBoard(data.state);
-                }
-            } catch (e) {
-                document.getElementById('status').innerText = 'خطأ في الاتصال بالسيرفر';
-            }
+                if(data.ok) { gameId = data.state.id; updateBoard(data.state); }
+                else setStatus('حدث خطأ أثناء بدء اللعبة');
+            } catch (e) { setStatus('تعذر الاتصال بالسيرفر'); }
+        }
+
+        function setStatus(text, loading = false) {
+            document.getElementById('statusText').innerText = text;
+            document.getElementById('spinner').style.display = loading ? 'block' : 'none';
         }
 
         function updateBoard(state) {
@@ -84,46 +156,39 @@
             legalMoves = state.legal || [];
             isAiTurn = (state.turn === 'b');
             
-            let statusText = state.status;
-            if (isAiTurn) statusText = '🤖 الذكاء الاصطناعي يفكر...';
-            document.getElementById('status').innerText = statusText;
+            if (state.over) setStatus(state.status);
+            else if (isAiTurn) setStatus('🤖 الذكاء الاصطناعي يفكر...', true);
+            else setStatus(state.status);
 
             renderBoard();
-
-            // إذا كان دور الذكاء الاصطناعي، نطلب منه حركة
-            if (isAiTurn && !state.over) {
-                setTimeout(makeAiMove, 500);
-            }
+            if (isAiTurn && !state.over) setTimeout(makeAiMove, 600);
         }
 
         function renderBoard() {
             const boardEl = document.getElementById('board');
             boardEl.innerHTML = '';
-            
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const sq = document.createElement('div');
-                    const isLight = (r + c) % 2 === 0;
-                    sq.className = 'square ' + (isLight ? 'light' : 'dark');
-                    
+                    sq.className = 'square ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
                     const pos = files[c] + ranks[r];
                     sq.dataset.pos = pos;
 
                     const piece = currentBoard[r][c];
                     if (piece) {
-                        // استخراج اللون والنوع من الرمز (مثلاً ♙)
-                        // نحتاج نعرف لون القطعة، لكن الباك اند بيرجع رموز فقط
-                        // سنعتمد على لون الرمز (القطع البيضاء رموزها مفرغة، السوداء ممتلئة)
-                        sq.innerText = piece;
+                        const key = symbolToKey[piece];
+                        if (key) {
+                            const img = document.createElement('img');
+                            img.src = pieceImages[key];
+                            sq.appendChild(img);
+                        }
                     }
 
-                    // التحديد
                     if (selectedSquare === pos) sq.classList.add('selected');
                     
-                    // الحركات المتاحة
                     if (selectedSquare) {
-                        const isValid = legalMoves.some(m => m.from === selectedSquare && m.to === pos);
-                        if (isValid) sq.classList.add('valid-move');
+                        const move = legalMoves.find(m => m.from === selectedSquare && m.to === pos);
+                        if (move) sq.classList.add(move.captured ? 'capture' : 'valid-move');
                     }
 
                     sq.onclick = () => handleSquareClick(pos);
@@ -133,22 +198,13 @@
         }
 
         function handleSquareClick(pos) {
-            if (isAiTurn) return; // لا تلعب في دور البوت
-
+            if (isAiTurn) return;
             if (selectedSquare) {
-                // محاولة تحريك
-                const isValid = legalMoves.some(m => m.from === selectedSquare && m.to === pos);
-                if (isValid) {
-                    makeMove(selectedSquare, pos);
-                } else {
-                    // إلغاء التحديد إذا ضغط على مكان غير صالح
-                    selectedSquare = null;
-                    renderBoard();
-                }
+                const move = legalMoves.find(m => m.from === selectedSquare && m.to === pos);
+                if (move) makeMove(selectedSquare, pos);
+                else { selectedSquare = null; renderBoard(); }
             } else {
-                // تحديد قطعة
-                const pieceMoves = legalMoves.filter(m => m.from === pos);
-                if (pieceMoves.length > 0) {
+                if (legalMoves.some(m => m.from === pos)) {
                     selectedSquare = pos;
                     renderBoard();
                 }
@@ -157,23 +213,16 @@
 
         async function makeMove(from, to) {
             selectedSquare = null;
-            document.getElementById('status').innerText = 'جاري تنفيذ الحركة...';
-            
+            setStatus('جاري تنفيذ الحركة...', true);
             try {
                 const res = await fetch('/api/chess/move', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ id: gameId, from: from, to: to, promotion: 'q' })
+                    body: JSON.stringify({ id: gameId, from, to, promotion: 'q' })
                 });
                 const data = await res.json();
-                if(data.ok) {
-                    updateBoard(data.state);
-                } else {
-                    alert(data.error);
-                    renderBoard();
-                }
-            } catch (e) {
-                document.getElementById('status').innerText = 'خطأ في الاتصال';
-            }
+                if(data.ok) updateBoard(data.state);
+                else { setStatus('حركة غير صالحة'); renderBoard(); }
+            } catch (e) { setStatus('خطأ في الاتصال'); }
         }
 
         async function makeAiMove() {
@@ -183,14 +232,9 @@
                     body: JSON.stringify({ id: gameId, level: currentLevel })
                 });
                 const data = await res.json();
-                if(data.ok) {
-                    updateBoard(data.state);
-                } else {
-                    document.getElementById('status').innerText = 'خطأ في حركة البوت';
-                }
-            } catch (e) {
-                document.getElementById('status').innerText = 'خطأ في الاتصال';
-            }
+                if(data.ok) updateBoard(data.state);
+                else setStatus('خطأ في حركة البوت');
+            } catch (e) { setStatus('السيرفر يستغرق وقتاً طويلاً للرد'); }
         }
     </script>
 </body>

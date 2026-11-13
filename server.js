@@ -12,83 +12,173 @@ try { config = require('./config'); } catch {}
 const PORT = Number(process.env.PORT || 8787);
 const HOST = '0.0.0.0';
 
-// ═══ AI ENGINE (minimax + alpha-beta) ═══
+// ═══ AI ENGINE (strategic minimax + alpha-beta) ═══
 function aiBestMove(chessInstance, level = 3) {
-    const PIECE_VALUES = { p:100, n:320, b:330, r:500, q:900, k:20000 };
-    const startTime = Date.now();
-    const TIME_LIMIT = 2500; // 2.5 ثانية كحد أقصى للتفكير
+  const PIECE_VALUES = { p:100, n:320, b:330, r:500, q:900, k:20000 };
+  const startTime = Date.now();
+  let timedOut = false;
 
-    // التقييم من منظور البوت (الأسود). الموجب يعني البوت كسبان.
-    function evaluate(chess) {
-        if (chess.isCheckmate()) return chess.turn() === 'w' ? 99999 : -99999;
-        if (chess.isDraw()) return 0;
-        let score = 0;
-        const board = chess.board();
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const sq = board[r][c];
-                if (!sq) continue;
-                const val = PIECE_VALUES[sq.type] || 0;
-                score += sq.color === 'b' ? val : -val;
-            }
+  level = Math.min(Math.max(Number(level) || 3, 1), 4);
+  const TIME_LIMIT = [0, 900, 1500, 2500, 4500][level];
+
+  function evaluate(chess) {
+    if (chess.isCheckmate()) return chess.turn() === 'w' ? 99999 : -99999;
+    if (chess.isDraw()) return 0;
+
+    let score = 0;
+    const board = chess.board();
+    let kings = { w:null, b:null };
+    let pawnFiles = { w:Array(8).fill(0), b:Array(8).fill(0) };
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = board[r][c];
+        if (!p) continue;
+        if (p.type === 'k') kings[p.color] = {r,c};
+        if (p.type === 'p') pawnFiles[p.color][c]++;
+
+        const sign = p.color === 'b' ? 1 : -1;
+        const center = 7 - Math.abs(3.5-r) - Math.abs(3.5-c);
+        const advance = p.color === 'w' ? 6-r : r-1;
+        let positional = 0;
+
+        if (p.type === 'p') positional += advance * 8 + center * 2;
+        if (p.type === 'n') positional += center * 9;
+        if (p.type === 'b') positional += center * 6;
+        if (p.type === 'q') positional += center * 3;
+        if (p.type === 'r' && ((p.color === 'b' && r === 1) || (p.color === 'w' && r === 6))) positional += 18;
+
+        score += sign * (PIECE_VALUES[p.type] + positional);
+      }
+    }
+
+    // تشجيع تطوير الأحصنة والفيلة بدل إبقائها في أماكن البداية
+    const undeveloped = [
+      ['w',7,1,'n'],['w',7,6,'n'],['w',7,2,'b'],['w',7,5,'b'],
+      ['b',0,1,'n'],['b',0,6,'n'],['b',0,2,'b'],['b',0,5,'b']
+    ];
+    for (const [color,r,c,type] of undeveloped) {
+      const p = board[r][c];
+      if (p && p.color === color && p.type === type) score += color === 'b' ? -14 : 14;
+    }
+
+    // مكافأة القلاع على الأعمدة المفتوحة وشبه المفتوحة
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = board[r][c];
+        if (!p || p.type !== 'r') continue;
+        const own = pawnFiles[p.color][c];
+        const enemy = pawnFiles[p.color === 'b' ? 'w' : 'b'][c];
+        const bonus = own === 0 ? (enemy === 0 ? 15 : 8) : 0;
+        score += (p.color === 'b' ? 1 : -1) * bonus;
+      }
+    }
+
+    // تقييم حماية الملك ببيادق الصف الأمامي
+    for (const color of ['w','b']) {
+      const king = kings[color];
+      if (!king) continue;
+      const shieldRow = king.r + (color === 'b' ? 1 : -1);
+      let shield = 0;
+      if (shieldRow >= 0 && shieldRow < 8) {
+        for (let c = Math.max(0,king.c-1); c <= Math.min(7,king.c+1); c++) {
+          const p = board[shieldRow][c];
+          if (p && p.type === 'p' && p.color === color) shield++;
         }
-        return score;
+      }
+      score += (color === 'b' ? 1 : -1) * shield * 12;
     }
 
-    function minimax(chess, d, alpha, beta, isMax) {
-        if (Date.now() - startTime > TIME_LIMIT) return evaluate(chess);
-        if (d === 0 || chess.isGameOver()) return evaluate(chess);
-        
-        const moves = chess.moves({ verbose: true });
-        moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0)); // الأكل أولاً
+    if (chess.isCheck()) score += chess.turn() === 'w' ? 25 : -25;
+    return score;
+  }
 
-        if (isMax) { // دور البوت (يزيد النتيجة)
-            let best = -Infinity;
-            for (const m of moves) {
-                chess.move(m);
-                best = Math.max(best, minimax(chess, d-1, alpha, beta, false));
-                chess.undo();
-                alpha = Math.max(alpha, best);
-                if (beta <= alpha) break;
-            }
-            return best;
-        } else { // دور اللاعب (يقلل نتيجة البوت)
-            let best = Infinity;
-            for (const m of moves) {
-                chess.move(m);
-                best = Math.min(best, minimax(chess, d-1, alpha, beta, true));
-                chess.undo();
-                beta = Math.min(beta, best);
-                if (beta <= alpha) break;
-            }
-            return best;
-        }
+  function moveOrder(m) {
+    let value = 0;
+    if (m.captured) value += (PIECE_VALUES[m.captured] || 0) * 10 - (PIECE_VALUES[m.piece] || 0);
+    if (m.promotion) value += (PIECE_VALUES[m.promotion] || 0) * 8;
+    return value;
+  }
+
+  function minimax(chess, depth, alpha, beta, isMax) {
+    if (Date.now() - startTime >= TIME_LIMIT) {
+      timedOut = true;
+      return evaluate(chess);
+    }
+    if (depth === 0 || chess.isGameOver()) return evaluate(chess);
+
+    const moves = chess.moves({ verbose:true }).sort((a,b) => moveOrder(b)-moveOrder(a));
+
+    if (isMax) {
+      let best = -Infinity;
+      for (const m of moves) {
+        chess.move(m);
+        const value = minimax(chess, depth-1, alpha, beta, false);
+        chess.undo();
+        if (timedOut) return best === -Infinity ? value : best;
+        best = Math.max(best,value);
+        alpha = Math.max(alpha,best);
+        if (beta <= alpha) break;
+      }
+      return best;
+    } else {
+      let best = Infinity;
+      for (const m of moves) {
+        chess.move(m);
+        const value = minimax(chess, depth-1, alpha, beta, true);
+        chess.undo();
+        if (timedOut) return best === Infinity ? value : best;
+        best = Math.min(best,value);
+        beta = Math.min(beta,best);
+        if (beta <= alpha) break;
+      }
+      return best;
+    }
+  }
+
+  const legalMoves = chessInstance.moves({ verbose:true });
+  if (!legalMoves.length) return null;
+
+  const mistakeChance = [0, 0.55, 0.12, 0, 0][level];
+  if (Math.random() < mistakeChance) {
+    return legalMoves[Math.floor(Math.random()*legalMoves.length)];
+  }
+
+  const maxDepth = level === 1 ? 1 : level === 2 ? 2 : level === 3 ? 3 : 5;
+  let bestMove = legalMoves[Math.floor(Math.random()*legalMoves.length)];
+
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    let iterationBest = -Infinity;
+    let candidates = [];
+    const ordered = [...legalMoves].sort((a,b) => moveOrder(b)-moveOrder(a));
+
+    for (const m of ordered) {
+      if (Date.now() - startTime >= TIME_LIMIT) {
+        timedOut = true;
+        break;
+      }
+
+      chessInstance.move(m);
+      const score = minimax(chessInstance, depth-1, -Infinity, Infinity, false);
+      chessInstance.undo();
+
+      if (timedOut) break;
+
+      if (score > iterationBest + 0.01) {
+        iterationBest = score;
+        candidates = [m];
+      } else if (Math.abs(score-iterationBest) <= 0.01) {
+        candidates.push(m);
+      }
     }
 
-    const legalMoves = chessInstance.moves({ verbose: true });
-    if (!legalMoves.length) return null;
-
-    if (level === 1 && Math.random() < 0.4) {
-        return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    if (timedOut) break;
+    if (candidates.length) {
+      bestMove = candidates[Math.floor(Math.random()*candidates.length)];
     }
+  }
 
-    // العمق: المستوى 3 و 4 هيبقى عمق 3 (أذكى بدون ما يعلق السيرفر)
-    const depth = level === 1 ? 1 : level === 2 ? 2 : 3;
-
-    let bestMove = legalMoves[0];
-    let bestScore = -Infinity;
-
-    try {
-        for (const m of legalMoves) {
-            chessInstance.move(m);
-            const score = minimax(chessInstance, depth-1, -Infinity, Infinity, false);
-            chessInstance.undo();
-            if (score > bestScore) { bestScore = score; bestMove = m; }
-        }
-    } catch (e) {
-        return legalMoves[Math.floor(Math.random() * legalMoves.length)];
-    }
-    return bestMove;
+  return bestMove;
 }
 // ═══════════════════════════════════════
 
@@ -127,6 +217,24 @@ function readBody(req) {
 
 function chessState(game) {
   const b = game.chess.board();
+  const threats = { white: [], black: [] };
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = b[row][col];
+      if (!piece) continue;
+
+      const square = String.fromCharCode(97 + col) + (8 - row);
+
+      for (const color of ['w', 'b']) {
+        if (piece.color === color) continue;
+
+        if (game.chess.attackers(square, color).length > 0) {
+          threats[color === 'w' ? 'white' : 'black'].push(square);
+        }
+      }
+    }
+  }
+
   const symbols = {
     wk:'♔', wq:'♕', wr:'♖', wb:'♗', wn:'♘', wp:'♙',
     bk:'♚', bq:'♛', br:'♜', bb:'♝', bn:'♞', bp:'♟'
@@ -142,6 +250,7 @@ function chessState(game) {
     over: game.chess.isGameOver(),
     checkmate: game.chess.isCheckmate(),
     draw: game.chess.isDraw(),
+    threats,
     legal: game.chess.moves({ verbose: true }).map(m => ({
       from: m.from,
       to: m.to,
@@ -155,9 +264,6 @@ function chessState(game) {
         : game.chess.isCheck()
           ? 'كش! ' + (game.chess.turn() === 'w' ? 'دور الأبيض' : 'دور الأسود')
           : 'دور ' + (game.chess.turn() === 'w' ? 'الأبيض' : 'الأسود'),
-    legal: game.chess.moves({ verbose: true }).map(m => ({
-      from: m.from, to: m.to, promotion: m.promotion || null
-    }))
   };
 }
 
@@ -824,6 +930,7 @@ let pointer;
 let boardGroup;
 let piecesGroup;
 let marksGroup;
+let threatsGroup;
 
 let gameId = '';
 let position = null;
@@ -857,8 +964,15 @@ function api(path, body){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body || {})
   }).then(async r=>{
-    const d=await r.json();
-    if(!r.ok || !d.ok) throw Error(d.error || 'حدث خطأ');
+    const raw=await r.text();
+    let d;
+    try {
+      d=JSON.parse(raw);
+    } catch(e) {
+      throw Error('رد غير صالح من السيرفر ('+r.status+')'+
+        (raw ? ': '+raw.slice(0,100) : ' — الرد فارغ'));
+    }
+    if(!r.ok || !d.ok) throw Error(d.error || 'HTTP '+r.status);
     return d;
   });
 }
@@ -996,15 +1110,16 @@ function setup(){
     100
   );
 
-  // Player-side camera, angled enough to keep the full board visible
-  camera.up.set(0,1,0);
-  camera.position.set(0,10.5,11.5);
+  // Fixed overhead camera centered above the chess arena
+  camera.up.set(0,0,-1);
+  camera.position.set(0,16,0.01);
   camera.fov = 40;
   camera.lookAt(0,0,0);
   camera.updateProjectionMatrix();
 
   renderer=new THREE.WebGLRenderer({
-    antialias: false
+    antialias: true,
+    powerPreference: 'high-performance'
   });
 
   renderer.setPixelRatio(
@@ -1049,10 +1164,12 @@ function setup(){
   boardGroup=new THREE.Group();
   piecesGroup=new THREE.Group();
   marksGroup=new THREE.Group();
+  threatsGroup=new THREE.Group();
 
   scene.add(boardGroup);
   scene.add(piecesGroup);
   scene.add(marksGroup);
+  scene.add(threatsGroup);
 
   const base=new THREE.Mesh(
     new THREE.BoxGeometry(8.7,.45,8.7),
@@ -1118,6 +1235,7 @@ function render(){
 
   clearGroup(piecesGroup);
   clearGroup(marksGroup);
+  clearGroup(threatsGroup);
 
   for(let row=0;row<8;row++){
     for(let col=0;col<8;col++){
@@ -1142,6 +1260,28 @@ function render(){
 
       piecesGroup.add(piece);
     }
+  }
+
+  const threatened = new Set([
+    ...(position.threats?.white || []),
+    ...(position.threats?.black || [])
+  ]);
+
+  for(const square of threatened){
+    const pos = squarePosition(square);
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(.43,.035,8,36),
+      new THREE.MeshBasicMaterial({
+        color:0xff2457,
+        transparent:true,
+        opacity:.9,
+        depthWrite:false
+      })
+    );
+    ring.rotation.x = Math.PI/2;
+    ring.position.set(pos.x,.30,pos.z);
+    ring.renderOrder = 8;
+    threatsGroup.add(ring);
   }
 
   if(selected){
@@ -1171,12 +1311,13 @@ function render(){
       } else {
         // Empty legal destination: a smaller glowing dot
         mark=new THREE.Mesh(
-          new THREE.CylinderGeometry(.15,.15,.045,28),
+          new THREE.CylinderGeometry(.23,.23,.065,40),
           new THREE.MeshBasicMaterial({
-            color:0xd94dff,
-            transparent:true,
-            opacity:.9,
-            depthTest:false
+            color:0xe879ff,
+            transparent:false,
+            opacity:1,
+            depthTest:false,
+            depthWrite:false
           })
         );
         mark.position.set(pos.x,.34,pos.z);
@@ -1300,83 +1441,55 @@ async function move(from,to){
 }
 
 function select(e){
-
   if(busy || !position || position.over)return;
-
   e.preventDefault();
 
   const rect=renderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-rect.left)/rect.width)*2-1;
+  pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
 
-  pointer.x=
-    ((e.clientX-rect.left)/rect.width)*2-1;
-
-  pointer.y=
-    -((e.clientY-rect.top)/rect.height)*2+1;
-
-  raycaster.setFromCamera(
-    pointer,
-    camera
+  const plane=new THREE.Plane(
+    new THREE.Vector3(0,1,0),-.275
   );
+  const hit=new THREE.Vector3();
 
-  const pieces=raycaster.intersectObjects(
-    piecesGroup.children,
-    true
-  );
-
-  if(pieces.length){
-
-    let obj=pieces[0].object;
-
-    while(
-      obj.parent &&
-      obj.parent!==piecesGroup
-    ){
-      obj=obj.parent;
-    }
-
-    const square=obj.userData.square;
-
-    if(square){
-
-      if(selected){
-
-        const valid=(position.legal||[]).some(
-          m=>m.from===selected &&
-             m.to===square
-        );
-
-        if(valid){
-          move(selected,square);
-          return;
-        }
-      }
-
-      if(
-        (position.legal||[]).some(
-          m=>m.from===square
-        )
-      ){
-        selected=square;
-        render();
-        return;
-      }
-    }
+  if(!raycaster.ray.intersectPlane(plane,hit)){
+    selected=null;
+    render();
+    return;
   }
 
-  const marks=raycaster.intersectObjects(
-    marksGroup.children,
-    false
-  );
+  let col=Math.round(hit.x+3.5);
+  let row=Math.round(hit.z+3.5);
 
-  if(marks.length && selected){
+  if(col<0 || col>7 || row<0 || row>7){
+    selected=null;
+    render();
+    return;
+  }
 
-    const square=
-      marks[0].object.userData.square;
+  if(flipped){
+    col=7-col;
+    row=7-row;
+  }
 
-    if(square){
+  const square=String.fromCharCode(97+col)+(8-row);
+
+  if(selected){
+    const valid=(position.legal||[]).some(
+      m=>m.from===selected && m.to===square
+    );
+    if(valid){
       move(selected,square);
       return;
     }
+  }
+
+  if((position.legal||[]).some(m=>m.from===square)){
+    selected=square;
+    render();
+    return;
   }
 
   selected=null;
@@ -1428,19 +1541,7 @@ function animate(){
 
   if(!renderer || !scene || !camera) return;
 
-  const blackTurn = position && position.turn === 'b';
-  const target = {
-    x: 0,
-    y: 10.5,
-    z: blackTurn ? -11.5 : 11.5
-  };
-  const smooth = 0.04;
-
-  camera.position.x += (target.x - camera.position.x) * smooth;
-  camera.position.y += (target.y - camera.position.y) * smooth;
-  camera.position.z += (target.z - camera.position.z) * smooth;
-  camera.lookAt(0,0,0);
-
+  // Keep the camera fixed above the board center
   renderer.render(scene,camera);
 }
 
@@ -1535,6 +1636,12 @@ document.getElementById('restart').onclick=reset;reset();`;
 }
 
 const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
+
         res.on('finish', () => {
             const ct = res.getHeader('Content-Type') || '';
             if (req.url.includes('.js') || req.url.includes('.glb') || req.url.includes('.gltf') || req.url.includes('.wasm')) {
@@ -1673,8 +1780,8 @@ const server = http.createServer(async (req, res) => {// REQUEST-LOGGER
     if (req.method === 'POST' && url.pathname === '/api/chess/undo') {
       const data = await readBody(req), game = chessGames.get(String(data.id || ''));
       if (!game) return send(res,404,{ok:false,error:'المباراة غير موجودة.'});
-      const fen = game.history.pop();
-      if (fen) game.chess.load(fen);
+      const previous = game.history.pop();
+      if (previous) game.chess.undo();
       return send(res,200,{ok:true,state:chessState(game)});
     }
 
